@@ -1,0 +1,25 @@
+{
+  "name": "void",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Browser-only encrypted P2P file transfer with PeerJS.",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.4.21",
+    "idb": "^8.0.3",
+    "peerjs": "^1.5.5",
+    "postcss": "^8.5.6",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^3.4.17",
+    "vite": "^7.2.4"
+  },
+  "devDependencies": {}
+}
