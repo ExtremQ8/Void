@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Peer from 'peerjs';
-import { getPeerConfig } from '../lib/ice';
+import { getIceDiagnostics, getPeerConfig } from '../lib/ice';
 
 const ROOM_PREFIX = 'void-';
 const RECONNECT_LIMIT = 3;
 const RECONNECT_DELAY = 10_000;
+const peerDiagnostics = getIceDiagnostics();
 const peerConfig = getPeerConfig();
 
 const initialState = {
@@ -16,6 +17,7 @@ const initialState = {
   reconnectAttempt: 0,
   message: '',
   error: '',
+  iceState: '',
 };
 
 export function usePeer() {
@@ -96,6 +98,14 @@ export function usePeer() {
           reconnectAttempt: 0,
           message: 'Connected',
           error: '',
+          iceState: connection.peerConnection?.iceConnectionState || 'connected',
+        }));
+      });
+
+      connection.on('iceStateChanged', (iceState) => {
+        setState((previous) => ({
+          ...previous,
+          iceState,
         }));
       });
 
@@ -111,6 +121,7 @@ export function usePeer() {
           ...previous,
           status: 'disconnected',
           message: 'Peer disconnected — attempting to reconnect',
+          iceState: connection.peerConnection?.iceConnectionState || previous.iceState,
         }));
         scheduleReconnectRef.current?.();
       });
@@ -121,6 +132,7 @@ export function usePeer() {
           status: 'disconnected',
           message: 'Connection error — attempting to reconnect',
           error: error.message,
+          iceState: connection.peerConnection?.iceConnectionState || previous.iceState,
         }));
         scheduleReconnectRef.current?.();
       });
@@ -360,5 +372,9 @@ export function usePeer() {
     addMessageHandler,
     sendMessage,
     getConnection,
+    network: {
+      ...peerDiagnostics,
+      iceState: state.iceState,
+    },
   };
 }

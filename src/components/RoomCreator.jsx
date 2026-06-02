@@ -5,6 +5,7 @@ export default function RoomCreator({
   onCopyCode,
   onCopyLink,
   roomCode,
+  shareWarning,
   shareUrl,
 }) {
   return (
@@ -21,6 +22,12 @@ export default function RoomCreator({
       <div className="mt-5">
         <QRCode value={shareUrl} />
       </div>
+
+      {shareWarning ? (
+        <p className="mt-4 rounded-xl border border-[#ffd60a]/20 bg-[#ffd60a]/10 px-3 py-2 text-left text-xs leading-5 text-[#ffd60a]">
+          {shareWarning}
+        </p>
+      ) : null}
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button

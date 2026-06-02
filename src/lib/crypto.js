@@ -133,8 +133,38 @@ export function parseRoomInput(input) {
   }
 }
 
-export function buildRoomUrl(roomCode, key) {
-  const url = new URL(window.location.href);
+export function isPrivateShareHost(hostname = window.location.hostname) {
+  const host = hostname.replace(/^\[|\]$/gu, '').toLowerCase();
+  const secondOctet = Number(host.match(/^172\.(\d+)\./u)?.[1]);
+
+  return (
+    host === 'localhost' ||
+    host === '0.0.0.0' ||
+    host === '::1' ||
+    host.endsWith('.local') ||
+    /^127\./u.test(host) ||
+    /^10\./u.test(host) ||
+    /^192\.168\./u.test(host) ||
+    (secondOctet >= 16 && secondOctet <= 31) ||
+    /^f[cd][0-9a-f]{2}:/u.test(host) ||
+    /^fe80:/u.test(host)
+  );
+}
+
+export function getPublicAppUrl(env = import.meta.env) {
+  return (env?.VITE_PUBLIC_APP_URL || env?.VITE_SHARE_BASE_URL || '').trim();
+}
+
+export function getShareUrlWarning(env = import.meta.env, location = window.location) {
+  if (getPublicAppUrl(env) || !isPrivateShareHost(location.hostname)) {
+    return '';
+  }
+
+  return 'This secure link uses a local address. A phone on cellular cannot open it.';
+}
+
+export function buildRoomUrl(roomCode, key, baseHref = getPublicAppUrl() || window.location.href) {
+  const url = new URL(baseHref, window.location.href);
   url.search = '';
   url.hash = '';
   url.searchParams.set('room', roomCode);

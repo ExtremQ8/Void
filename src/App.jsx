@@ -10,7 +10,13 @@ import { useEncryption } from './hooks/useEncryption';
 import { usePeer } from './hooks/usePeer';
 import { useResume } from './hooks/useResume';
 import { useTransfer } from './hooks/useTransfer';
-import { buildRoomUrl, generateRoomCode, parseKeyFromHash, parseRoomInput } from './lib/crypto';
+import {
+  buildRoomUrl,
+  generateRoomCode,
+  getShareUrlWarning,
+  parseKeyFromHash,
+  parseRoomInput,
+} from './lib/crypto';
 
 async function copyText(value) {
   try {
@@ -30,6 +36,31 @@ async function copyText(value) {
 
 function getInitialRoomCode() {
   return (new URLSearchParams(window.location.search).get('room') || '').toUpperCase();
+}
+
+function getNetworkAdvice(peer) {
+  const iceState = peer.network?.iceState || '';
+
+  if (iceState === 'failed') {
+    if (!peer.network?.hasCustomTurnServer) {
+      return 'This network pair needs a TURN relay. Add TURN settings and redeploy Void.';
+    }
+
+    return 'WebRTC relay failed. Check the TURN URL, username, credential, and firewall ports.';
+  }
+
+  if (peer.status === 'error' && peer.message?.includes('Could not connect to peer')) {
+    return 'The sender must keep the room open, and the receiver must open a reachable secure link.';
+  }
+
+  if (
+    (peer.status === 'disconnected' || peer.status === 'interrupted') &&
+    !peer.network?.hasCustomTurnServer
+  ) {
+    return 'Wi-Fi to cellular transfers may need TURN. Configure a TURN relay for reliable cross-network transfers.';
+  }
+
+  return '';
 }
 
 function ResumeBanner({ inboundSessions, outboundSessions }) {
@@ -76,6 +107,7 @@ export default function App() {
   const [mode, setMode] = useState(initialRoomRef.current ? 'join' : 'create');
   const [roomCode, setRoomCode] = useState(initialRoomRef.current || '');
   const [shareUrl, setShareUrl] = useState('');
+  const [shareWarning, setShareWarning] = useState('');
   const [joinError, setJoinError] = useState('');
   const [copied, setCopied] = useState('');
 
@@ -108,6 +140,7 @@ export default function App() {
     setJoinError('');
     const key = await encryption.createKey();
     setShareUrl(buildRoomUrl(nextRoomCode, key));
+    setShareWarning(getShareUrlWarning());
     peer.startHost(nextRoomCode);
   }, [encryption, peer]);
 
@@ -209,6 +242,7 @@ export default function App() {
   const connectedReady = peer.connected && encryption.ready;
   const showJoiner = mode === 'join' && !connectedReady;
   const showCreator = mode === 'create' && !connectedReady;
+  const networkAdvice = getNetworkAdvice(peer);
 
   return (
     <main className="min-h-screen bg-void-bg px-4 py-5 text-white sm:px-6 sm:py-8">
@@ -261,6 +295,13 @@ export default function App() {
             </div>
           ) : null}
 
+          {networkAdvice ? (
+            <div className="fade-panel rounded-[20px] border border-[#ffd60a]/20 bg-[#ffd60a]/10 p-4">
+              <p className="text-sm font-semibold text-white">Network check</p>
+              <p className="mt-1 text-xs leading-5 text-[#ffd60a]">{networkAdvice}</p>
+            </div>
+          ) : null}
+
           {peer.status === 'error' && mode === 'create' ? (
             <div className="fade-panel rounded-[20px] border border-[#ff453a]/20 bg-[#ff453a]/10 p-4">
               <p className="text-sm font-semibold text-white">{peer.message || 'Room error'}</p>
@@ -288,6 +329,7 @@ export default function App() {
               onCopyCode={copyCode}
               onCopyLink={copyLink}
               roomCode={roomCode}
+              shareWarning={shareWarning}
               shareUrl={shareUrl}
             />
           ) : null}

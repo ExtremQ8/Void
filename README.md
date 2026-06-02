@@ -33,14 +33,24 @@ VITE_TURN_USERNAME=void
 VITE_TURN_CREDENTIAL=replace-with-your-turn-password
 ```
 
+If the sender is using a local dev URL such as `localhost`, `127.0.0.1`, or
+`192.168.x.x`, a phone on cellular data cannot open that secure link. Use the
+deployed site, or set `VITE_PUBLIC_APP_URL` to the deployed app URL so copied
+links point at a public origin:
+
+```bash
+VITE_PUBLIC_APP_URL=https://example.com/Void/
+```
+
 You can also set `VITE_STUN_URLS`, `VITE_ICE_SERVERS` with full `RTCIceServer`
 JSON, and `VITE_ICE_TRANSPORT_POLICY=relay` when you want to force TURN for
 testing locked-down networks.
 
-For GitHub Pages, add the non-secret values as repository variables and the TURN
-username/password as repository secrets. The deploy workflow passes those values
-to `npm run build`. Vite embeds `VITE_*` values into the browser bundle, so use
-provider-issued or regularly rotated TURN credentials.
+For GitHub Pages, add `VITE_PUBLIC_APP_URL`, `VITE_TURN_URLS`, and other
+non-secret values as repository variables. Add the TURN username/password as
+repository secrets. The deploy workflow passes those values to `npm run build`.
+Vite embeds `VITE_*` values into the browser bundle, so use provider-issued or
+regularly rotated TURN credentials.
 
 ## Resuming Transfers
 
