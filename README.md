@@ -21,6 +21,27 @@ The clipboard box syncs text in real time after both peers connect. Paste links,
 - The encryption key is stored in the URL fragment, which is not sent to web servers.
 - PeerJS Cloud is used for signaling only; file data goes over the WebRTC data channel directly between peers.
 
+## Transfers Outside One Network
+
+WebRTC can connect peers directly when their networks allow it. Some mobile,
+office, hotel, carrier-grade NAT, or strict firewall networks require a TURN
+relay. Void supports custom ICE servers through Vite environment variables:
+
+```bash
+VITE_TURN_URLS=turn:turn.example.com:3478?transport=udp,turn:turn.example.com:3478?transport=tcp,turns:turn.example.com:5349?transport=tcp
+VITE_TURN_USERNAME=void
+VITE_TURN_CREDENTIAL=replace-with-your-turn-password
+```
+
+You can also set `VITE_STUN_URLS`, `VITE_ICE_SERVERS` with full `RTCIceServer`
+JSON, and `VITE_ICE_TRANSPORT_POLICY=relay` when you want to force TURN for
+testing locked-down networks.
+
+For GitHub Pages, add the non-secret values as repository variables and the TURN
+username/password as repository secrets. The deploy workflow passes those values
+to `npm run build`. Vite embeds `VITE_*` values into the browser bundle, so use
+provider-issued or regularly rotated TURN credentials.
+
 ## Resuming Transfers
 
 Void stores incomplete received chunks in IndexedDB. If a connection drops, reconnect with the same sender and Void asks for the next missing chunk. If the sender reloads and loses the original `File` object, Void prompts them to re-select the same file so the transfer can continue from the last acknowledged chunk.

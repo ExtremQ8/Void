@@ -30,6 +30,14 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_ICE_CANDIDATE_POOL_SIZE: ${{ vars.VITE_ICE_CANDIDATE_POOL_SIZE }}
+          VITE_ICE_SERVERS: ${{ secrets.VITE_ICE_SERVERS || vars.VITE_ICE_SERVERS }}
+          VITE_ICE_TRANSPORT_POLICY: ${{ vars.VITE_ICE_TRANSPORT_POLICY }}
+          VITE_STUN_URLS: ${{ vars.VITE_STUN_URLS }}
+          VITE_TURN_CREDENTIAL: ${{ secrets.VITE_TURN_CREDENTIAL }}
+          VITE_TURN_URLS: ${{ vars.VITE_TURN_URLS }}
+          VITE_TURN_USERNAME: ${{ secrets.VITE_TURN_USERNAME || vars.VITE_TURN_USERNAME }}
         run: npm run build
 
       - name: Ensure GitHub Pages is enabled

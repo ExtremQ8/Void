@@ -33,7 +33,7 @@ function TransferRow({ item, title }) {
   );
 }
 
-function CompletedRow({ item }) {
+function CompletedRow({ item, onDownload }) {
   return (
     <article className="rounded-[20px] border border-void-border bg-void-surface p-4">
       <div className="flex min-w-0 items-center justify-between gap-3">
@@ -41,19 +41,21 @@ function CompletedRow({ item }) {
           <p className="truncate text-sm font-semibold text-white">{item.filename}</p>
           <p className="mt-1 text-xs text-void-muted">{formatBytes(item.fileSize)} - verified</p>
         </div>
-        <a
+        <button
           className="shrink-0 rounded-xl border border-white/18 px-3 py-2 text-xs font-semibold text-white transition hover:border-white/35"
-          download={item.filename}
-          href={item.url}
+          onClick={() => {
+            void onDownload(item);
+          }}
+          type="button"
         >
           Download
-        </a>
+        </button>
       </div>
     </article>
   );
 }
 
-export default function FileQueue({ completed, incoming, outgoing, reselectNeeded }) {
+export default function FileQueue({ completed, incoming, onDownload, outgoing, reselectNeeded }) {
   const hasRows =
     outgoing.length > 0 ||
     incoming.length > 0 ||
@@ -89,7 +91,7 @@ export default function FileQueue({ completed, incoming, outgoing, reselectNeede
       ))}
 
       {completed.map((item) => (
-        <CompletedRow item={item} key={item.sessionId} />
+        <CompletedRow item={item} key={item.sessionId} onDownload={onDownload} />
       ))}
     </section>
   );

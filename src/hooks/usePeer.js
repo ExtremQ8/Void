@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Peer from 'peerjs';
+import { getPeerConfig } from '../lib/ice';
 
 const ROOM_PREFIX = 'void-';
 const RECONNECT_LIMIT = 3;
 const RECONNECT_DELAY = 10_000;
+const peerConfig = getPeerConfig();
 
 const initialState = {
   status: 'idle',
@@ -211,6 +213,7 @@ export function usePeer() {
       });
 
       const peer = new Peer(`${ROOM_PREFIX}${roomCode}`, {
+        config: peerConfig,
         debug: 1,
       });
       peerRef.current = peer;
@@ -266,6 +269,7 @@ export function usePeer() {
       });
 
       const peer = new Peer(undefined, {
+        config: peerConfig,
         debug: 1,
       });
       peerRef.current = peer;

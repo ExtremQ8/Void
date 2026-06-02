@@ -316,6 +316,7 @@ export default function App() {
           <FileQueue
             completed={transfer.completed}
             incoming={transfer.incoming}
+            onDownload={transfer.downloadCompleted}
             outgoing={transfer.outgoing}
             reselectNeeded={transfer.reselectNeeded}
           />

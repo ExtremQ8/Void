@@ -45,8 +45,8 @@ function getDataChannel(connection) {
   return connection?.dataChannel || connection?._dc || null;
 }
 
-function autoDownload(file) {
-  window.requestAnimationFrame(() => {
+function triggerAnchorDownload(file, { defer = false } = {}) {
+  const download = () => {
     const link = document.createElement('a');
     link.href = file.url;
     link.download = file.filename;
@@ -54,7 +54,38 @@ function autoDownload(file) {
     document.body.appendChild(link);
     link.click();
     link.remove();
-  });
+  };
+
+  if (defer) {
+    window.requestAnimationFrame(download);
+    return;
+  }
+
+  download();
+}
+
+function autoDownload(file) {
+  triggerAnchorDownload(file, { defer: true });
+}
+
+async function saveCompletedFile(file) {
+  if (file.blob && typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: file.filename,
+      });
+      const writable = await handle.createWritable();
+      await writable.write(file.blob);
+      await writable.close();
+      return;
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return;
+      }
+    }
+  }
+
+  triggerAnchorDownload(file);
 }
 
 export function useTransfer({
@@ -249,8 +280,6 @@ export function useTransfer({
         resolve();
       };
 
-      let restartFrom = null;
-
       try {
         dataChannel.bufferedAmountLowThreshold = BUFFER_LOW_WATER;
         dataChannel.addEventListener?.('bufferedamountlow', done, { once: true });
@@ -319,6 +348,7 @@ export function useTransfer({
       activeRef.current = true;
       session.sending = true;
       session.restartFrom = null;
+      let restartFrom = null;
 
       try {
         const startChunk = Math.max(0, Math.min(fromChunk, session.meta.totalChunks - 1));
@@ -621,6 +651,7 @@ export function useTransfer({
         filename: session.filename,
         fileSize: session.fileSize,
         mimeType: session.mimeType,
+        blob,
         url: URL.createObjectURL(blob),
         completedAt: Date.now(),
       };
@@ -893,6 +924,17 @@ export function useTransfer({
     );
   }, []);
 
+  const downloadCompleted = useCallback(
+    async (file) => {
+      try {
+        await saveCompletedFile(file);
+      } catch (error) {
+        addError(`Download failed for ${file.filename}: ${error.message}`);
+      }
+    },
+    [addError],
+  );
+
   const summary = useMemo(() => {
     const incompleteOutgoing = outgoing.filter((item) =>
       ['queued', 'hashing', 'transferring', 'interrupted'].includes(item.status),
@@ -913,6 +955,7 @@ export function useTransfer({
     completed,
     errors,
     addFiles,
+    downloadCompleted,
     retryInterrupted,
     pausedByVisibility,
     reselectNeeded,
