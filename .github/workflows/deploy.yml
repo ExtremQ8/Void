@@ -31,6 +31,7 @@ jobs:
 
       - name: Build
         env:
+          VITE_DISABLE_PUBLIC_TURN: ${{ vars.VITE_DISABLE_PUBLIC_TURN }}
           VITE_ICE_CANDIDATE_POOL_SIZE: ${{ vars.VITE_ICE_CANDIDATE_POOL_SIZE }}
           VITE_ICE_SERVERS: ${{ secrets.VITE_ICE_SERVERS || vars.VITE_ICE_SERVERS }}
           VITE_ICE_TRANSPORT_POLICY: ${{ vars.VITE_ICE_TRANSPORT_POLICY }}

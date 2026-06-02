@@ -5,8 +5,22 @@ import { getIceDiagnostics, getPeerConfig } from '../lib/ice';
 const ROOM_PREFIX = 'void-';
 const RECONNECT_LIMIT = 3;
 const RECONNECT_DELAY = 10_000;
+const RELAY_FALLBACK_DELAY = 12_000;
 const peerDiagnostics = getIceDiagnostics();
-const peerConfig = getPeerConfig();
+
+function getPeerOptions(forceRelay = false) {
+  return {
+    config: getPeerConfig(
+      forceRelay
+        ? {
+            ...import.meta.env,
+            VITE_ICE_TRANSPORT_POLICY: 'relay',
+          }
+        : import.meta.env,
+    ),
+    debug: 1,
+  };
+}
 
 const initialState = {
   status: 'idle',
@@ -18,6 +32,7 @@ const initialState = {
   message: '',
   error: '',
   iceState: '',
+  relayMode: 'direct',
 };
 
 export function usePeer() {
@@ -26,12 +41,14 @@ export function usePeer() {
   const connectionRef = useRef(null);
   const handlersRef = useRef(new Set());
   const reconnectTimerRef = useRef(null);
+  const relayFallbackTimerRef = useRef(null);
   const reconnectAttemptRef = useRef(0);
   const roomCodeRef = useRef('');
   const remotePeerIdRef = useRef('');
   const isHostRef = useRef(false);
   const lockedRef = useRef(false);
   const shouldReconnectRef = useRef(true);
+  const forceRelayRef = useRef(false);
   const scheduleReconnectRef = useRef(null);
 
   const clearReconnectTimer = useCallback(() => {
@@ -41,8 +58,16 @@ export function usePeer() {
     }
   }, []);
 
+  const clearRelayFallbackTimer = useCallback(() => {
+    if (relayFallbackTimerRef.current) {
+      window.clearTimeout(relayFallbackTimerRef.current);
+      relayFallbackTimerRef.current = null;
+    }
+  }, []);
+
   const resetConnection = useCallback(() => {
     clearReconnectTimer();
+    clearRelayFallbackTimer();
 
     if (connectionRef.current) {
       connectionRef.current.close();
@@ -54,7 +79,7 @@ export function usePeer() {
     }
 
     peerRef.current = null;
-  }, [clearReconnectTimer]);
+  }, [clearReconnectTimer, clearRelayFallbackTimer]);
 
   const emitMessage = useCallback((message) => {
     handlersRef.current.forEach((handler) => handler(message));
@@ -88,6 +113,7 @@ export function usePeer() {
 
       connection.on('open', () => {
         clearReconnectTimer();
+        clearRelayFallbackTimer();
         reconnectAttemptRef.current = 0;
         lockedRef.current = true;
 
@@ -99,6 +125,7 @@ export function usePeer() {
           message: 'Connected',
           error: '',
           iceState: connection.peerConnection?.iceConnectionState || 'connected',
+          relayMode: forceRelayRef.current ? 'relay' : previous.relayMode,
         }));
       });
 
@@ -137,7 +164,7 @@ export function usePeer() {
         scheduleReconnectRef.current?.();
       });
     },
-    [clearReconnectTimer, emitMessage],
+    [clearReconnectTimer, clearRelayFallbackTimer, emitMessage],
   );
 
   const connectToHost = useCallback(() => {
@@ -207,8 +234,9 @@ export function usePeer() {
   scheduleReconnectRef.current = scheduleReconnect;
 
   const startHost = useCallback(
-    (roomCode) => {
+    (roomCode, forceRelay = false) => {
       shouldReconnectRef.current = true;
+      forceRelayRef.current = forceRelay;
       resetConnection();
       lockedRef.current = false;
       reconnectAttemptRef.current = 0;
@@ -221,13 +249,11 @@ export function usePeer() {
         status: 'connecting',
         roomCode,
         isHost: true,
-        message: 'Creating room',
+        message: forceRelay ? 'Creating relay room' : 'Creating room',
+        relayMode: forceRelay ? 'relay' : 'direct',
       });
 
-      const peer = new Peer(`${ROOM_PREFIX}${roomCode}`, {
-        config: peerConfig,
-        debug: 1,
-      });
+      const peer = new Peer(`${ROOM_PREFIX}${roomCode}`, getPeerOptions(forceRelay));
       peerRef.current = peer;
 
       peer.on('open', (id) => {
@@ -235,7 +261,7 @@ export function usePeer() {
           ...previous,
           status: 'waiting',
           peerId: id,
-          message: 'Waiting for peer',
+          message: forceRelay ? 'Waiting through relay' : 'Waiting for peer',
         }));
       });
 
@@ -258,13 +284,24 @@ export function usePeer() {
               : error.message,
         }));
       });
+
+      if (!forceRelay) {
+        relayFallbackTimerRef.current = window.setTimeout(() => {
+          if (connectionRef.current?.open || forceRelayRef.current || !roomCodeRef.current) {
+            return;
+          }
+
+          startHost(roomCodeRef.current, true);
+        }, RELAY_FALLBACK_DELAY);
+      }
     },
     [attachConnection, resetConnection],
   );
 
   const joinRoom = useCallback(
-    (roomCode) => {
+    (roomCode, forceRelay = false) => {
       shouldReconnectRef.current = true;
+      forceRelayRef.current = forceRelay;
       resetConnection();
       lockedRef.current = false;
       reconnectAttemptRef.current = 0;
@@ -277,20 +314,18 @@ export function usePeer() {
         status: 'connecting',
         roomCode,
         isHost: false,
-        message: 'Connecting',
+        message: forceRelay ? 'Connecting through relay' : 'Connecting',
+        relayMode: forceRelay ? 'relay' : 'direct',
       });
 
-      const peer = new Peer(undefined, {
-        config: peerConfig,
-        debug: 1,
-      });
+      const peer = new Peer(undefined, getPeerOptions(forceRelay));
       peerRef.current = peer;
 
       peer.on('open', (id) => {
         setState((previous) => ({
           ...previous,
           peerId: id,
-          message: 'Connecting',
+          message: forceRelay ? 'Connecting through relay' : 'Connecting',
         }));
         connectToHost();
       });
@@ -309,6 +344,16 @@ export function usePeer() {
           message: error.message,
         }));
       });
+
+      if (!forceRelay) {
+        relayFallbackTimerRef.current = window.setTimeout(() => {
+          if (connectionRef.current?.open || forceRelayRef.current || !roomCodeRef.current) {
+            return;
+          }
+
+          joinRoom(roomCodeRef.current, true);
+        }, RELAY_FALLBACK_DELAY);
+      }
     },
     [connectToHost, resetConnection],
   );
@@ -318,6 +363,7 @@ export function usePeer() {
     clearReconnectTimer();
 
     if (isHostRef.current) {
+      forceRelayRef.current = false;
       setState((previous) => ({
         ...previous,
         status: 'waiting',
@@ -328,6 +374,7 @@ export function usePeer() {
       return;
     }
 
+    forceRelayRef.current = false;
     setState((previous) => ({
       ...previous,
       status: 'connecting',
@@ -375,6 +422,7 @@ export function usePeer() {
     network: {
       ...peerDiagnostics,
       iceState: state.iceState,
+      relayMode: state.relayMode,
     },
   };
 }

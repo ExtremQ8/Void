@@ -2,6 +2,16 @@ import * as peerjs from 'peerjs';
 
 const VALID_TRANSPORT_POLICIES = new Set(['all', 'relay']);
 const DEFAULT_ICE_CANDIDATE_POOL_SIZE = 4;
+const PUBLIC_RELAY_ICE_SERVERS = [
+  {
+    urls: ['stun:stun.cloudflare.com:3478', 'stun:freestun.net:3478'],
+  },
+  {
+    urls: ['turn:freestun.net:3478'],
+    username: 'free',
+    credential: 'free',
+  },
+];
 
 function splitList(value = '') {
   return value
@@ -63,6 +73,10 @@ function buildEnvIceServers(env = import.meta.env) {
   return servers;
 }
 
+function shouldUsePublicRelayFallback(env = import.meta.env) {
+  return env?.VITE_DISABLE_PUBLIC_TURN !== 'true';
+}
+
 function dedupeIceServers(servers) {
   const seen = new Set();
 
@@ -116,6 +130,7 @@ export function getPeerConfig(env = import.meta.env) {
     ...defaultConfig,
     iceServers: dedupeIceServers([
       ...(defaultConfig.iceServers || []),
+      ...(shouldUsePublicRelayFallback(env) ? PUBLIC_RELAY_ICE_SERVERS : []),
       ...buildEnvIceServers(env),
     ]),
     iceCandidatePoolSize: Number.isFinite(poolSize)

@@ -1,5 +1,6 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+const DEFAULT_PUBLIC_APP_URL = 'https://extremq8.github.io/Void/';
 
 export function bytesToBase64Url(buffer) {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
@@ -152,7 +153,7 @@ export function isPrivateShareHost(hostname = window.location.hostname) {
 }
 
 export function getPublicAppUrl(env = import.meta.env) {
-  return (env?.VITE_PUBLIC_APP_URL || env?.VITE_SHARE_BASE_URL || '').trim();
+  return (env?.VITE_PUBLIC_APP_URL || env?.VITE_SHARE_BASE_URL || DEFAULT_PUBLIC_APP_URL).trim();
 }
 
 export function getShareUrlWarning(env = import.meta.env, location = window.location) {

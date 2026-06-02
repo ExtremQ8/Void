@@ -25,7 +25,8 @@ The clipboard box syncs text in real time after both peers connect. Paste links,
 
 WebRTC can connect peers directly when their networks allow it. Some mobile,
 office, hotel, carrier-grade NAT, or strict firewall networks require a TURN
-relay. Void supports custom ICE servers through Vite environment variables:
+relay. Void includes a public TURN fallback for Wi-Fi to cellular testing and
+also supports custom ICE servers through Vite environment variables:
 
 ```bash
 VITE_TURN_URLS=turn:turn.example.com:3478?transport=udp,turn:turn.example.com:3478?transport=tcp,turns:turn.example.com:5349?transport=tcp
@@ -34,17 +35,17 @@ VITE_TURN_CREDENTIAL=replace-with-your-turn-password
 ```
 
 If the sender is using a local dev URL such as `localhost`, `127.0.0.1`, or
-`192.168.x.x`, a phone on cellular data cannot open that secure link. Use the
-deployed site, or set `VITE_PUBLIC_APP_URL` to the deployed app URL so copied
-links point at a public origin:
+`192.168.x.x`, a phone on cellular data cannot open that secure link. Void
+defaults local shares to this repo's GitHub Pages URL. You can override it:
 
 ```bash
-VITE_PUBLIC_APP_URL=https://example.com/Void/
+VITE_PUBLIC_APP_URL=https://extremq8.github.io/Void/
 ```
 
 You can also set `VITE_STUN_URLS`, `VITE_ICE_SERVERS` with full `RTCIceServer`
 JSON, and `VITE_ICE_TRANSPORT_POLICY=relay` when you want to force TURN for
-testing locked-down networks.
+testing locked-down networks. Set `VITE_DISABLE_PUBLIC_TURN=true` if you want
+to disable the public fallback and only use your own TURN servers.
 
 For GitHub Pages, add `VITE_PUBLIC_APP_URL`, `VITE_TURN_URLS`, and other
 non-secret values as repository variables. Add the TURN username/password as
